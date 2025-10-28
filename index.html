@@ -1,39 +1,286 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>JSX Without React - Demo</title>
-    <style>
-      :root {
-        color-scheme: light;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        margin: 0;
-        min-height: 100vh;
-        background: #f1f5f9;
-        color: #0f172a;
-      }
-      #root {
-        max-width: 1280px;
-        margin: 0 auto;
-        padding: 24px;
-      }
-      a {
-        color: inherit;
-        text-decoration: none;
-      }
-      button {
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bảng điều khiển & Quản lý công việc</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1e293b, #334155);
+      color: #f1f5f9;
+      padding: 32px;
+    }
 
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    h1, h2, h3, h4 {
+      margin: 0;
+    }
+
+    .layout {
+      display: flex;
+      gap: 32px;
+      min-height: 100vh;
+      flex-wrap: wrap;
+    }
+
+    .dashboard {
+      flex: 2 1 600px;
+      background: #1e293b;
+      padding: 28px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .tasks {
+      flex: 1 1 360px;
+      background: #f8fafc;
+      color: #0f172a;
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .summary-card {
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: #0ea5e9;
+      color: #f8fafc;
+      min-width: 140px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .charts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .chart-card {
+      flex: 1 1 280px;
+      min-width: 260px;
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 18px;
+      color: #0f172a;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      background: #06b6d4;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 16px;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #0891b2;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="module">
+    // ===================== DỮ LIỆU GIẢ & HÀM HỖ TRỢ =====================
+    function getInitialData() {
+      return Array.from({ length: 8 }, (_, i) => ({
+        label: 'Mục ' + (i + 1),
+        value: Math.floor(Math.random() * 100),
+      }));
+    }
+
+    let dataListeners = [];
+    let interval;
+    function subscribe(callback) {
+      dataListeners.push(callback);
+      callback(getInitialData());
+      return () => {
+        dataListeners = dataListeners.filter(cb => cb !== callback);
+      };
+    }
+    function startSimulation(ms) {
+      interval = setInterval(() => {
+        const next = getInitialData();
+        dataListeners.forEach(cb => cb(next));
+      }, ms);
+    }
+    function stopSimulation() {
+      clearInterval(interval);
+    }
+
+    // ===================== CHART GIẢ LẬP =====================
+    function Chart({ type, data, width, height }) {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.fillStyle = '#0ea5e9';
+      data.forEach((d, i) => {
+        const val = d.value;
+        const barWidth = width / data.length - 10;
+        const x = i * (barWidth + 10) + 5;
+        const y = height - val * 2;
+        if (type === 'bar') ctx.fillRect(x, y, barWidth, val * 2);
+        if (type === 'line') {
+          ctx.beginPath();
+          ctx.arc(x + barWidth / 2, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      return canvas;
+    }
+
+    // ===================== TODO APP =====================
+    function TodoApp() {
+      const container = document.createElement('div');
+      const input = document.createElement('input');
+      input.placeholder = 'Thêm công việc mới...';
+      input.style.width = '100%';
+      input.style.padding = '8px';
+      input.style.border = '1px solid #cbd5e1';
+      input.style.borderRadius = '8px';
+      input.style.marginBottom = '12px';
+
+      const list = document.createElement('ul');
+      list.style.listStyle = 'none';
+      list.style.padding = 0;
+      list.style.margin = 0;
+
+      input.addEventListener('keypress', e => {
+        if (e.key === 'Enter' && input.value.trim()) {
+          const li = document.createElement('li');
+          li.textContent = input.value;
+          li.style.padding = '6px 0';
+          li.style.cursor = 'pointer';
+          li.addEventListener('click', () => {
+            li.style.textDecoration = li.style.textDecoration ? '' : 'line-through';
+          });
+          list.appendChild(li);
+          input.value = '';
+        }
+      });
+
+      container.appendChild(input);
+      container.appendChild(list);
+      return container;
+    }
+
+    // ===================== ỨNG DỤNG CHÍNH =====================
+    function App(root) {
+      const layout = document.createElement('div');
+      layout.className = 'layout';
+
+      // ---- Dashboard ----
+      const dash = document.createElement('section');
+      dash.className = 'dashboard';
+
+      const header = document.createElement('header');
+      header.style.display = 'flex';
+      header.style.justifyContent = 'space-between';
+      header.style.alignItems = 'center';
+
+      const title = document.createElement('div');
+      title.innerHTML = `
+        <h1 style="color:#38bdf8;">Bảng điều khiển trực tiếp</h1>
+        <p style="color:#cbd5e1;">Dữ liệu tự động cập nhật sau vài giây.</p>
+      `;
+
+      const resetBtn = document.createElement('button');
+      resetBtn.textContent = 'Làm mới dữ liệu';
+
+      header.appendChild(title);
+      header.appendChild(resetBtn);
+      dash.appendChild(header);
+
+      // ---- Tổng quan ----
+      const summary = document.createElement('div');
+      summary.className = 'summary';
+      dash.appendChild(summary);
+
+      // ---- Biểu đồ ----
+      const charts = document.createElement('div');
+      charts.className = 'charts';
+      dash.appendChild(charts);
+
+      // ---- Khu vực công việc ----
+      const tasks = document.createElement('section');
+      tasks.className = 'tasks';
+      tasks.innerHTML = `
+        <h2 style="color:#0ea5e9;">Quản lý công việc</h2>
+        <p style="color:#475569;">Thêm, chỉnh sửa hoặc đánh dấu hoàn thành công việc khi bạn theo dõi dữ liệu thời gian thực.</p>
+      `;
+      tasks.appendChild(TodoApp());
+
+      layout.appendChild(dash);
+      layout.appendChild(tasks);
+      root.appendChild(layout);
+
+      // ---- Hiển thị dữ liệu ----
+      function renderData(data) {
+        summary.innerHTML = '';
+        const total = data.reduce((s, d) => s + d.value, 0);
+        const avg = data.length ? Math.round(total / data.length) : 0;
+        const max = Math.max(...data.map(d => d.value));
+
+        const infos = [
+          { label: 'Tổng giá trị', value: total },
+          { label: 'Trung bình', value: avg },
+          { label: 'Cao nhất', value: max },
+        ];
+        infos.forEach(info => {
+          const card = document.createElement('div');
+          card.className = 'summary-card';
+          card.innerHTML = `<h4>${info.label}</h4><strong style="font-size:24px">${info.value}</strong>`;
+          summary.appendChild(card);
+        });
+
+        charts.innerHTML = '';
+        [
+          { type: 'bar', name: 'Biểu đồ cột' },
+          { type: 'line', name: 'Biểu đồ đường' },
+          { type: 'pie', name: 'Biểu đồ tròn' },
+        ].forEach(cfg => {
+          const card = document.createElement('div');
+          card.className = 'chart-card';
+          const h3 = document.createElement('h3');
+          h3.textContent = cfg.name;
+          card.appendChild(h3);
+          card.appendChild(Chart({ type: cfg.type, data, width: 280, height: 200 }));
+          charts.appendChild(card);
+        });
+      }
+
+      let unsubscribe;
+      resetBtn.onclick = () => {
+        unsubscribe?.();
+        renderData(getInitialData());
+        unsubscribe = subscribe(renderData);
+      };
+
+      unsubscribe = subscribe(renderData);
+      startSimulation(2000);
+      window.addEventListener('beforeunload', stopSimulation);
+    }
+
+    App(document.getElementById('root'));
+  </script>
+</body>
 </html>
