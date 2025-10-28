@@ -1,0 +1,19 @@
+{
+  "name": "jsx-without-react",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "type-check": "tsc --noEmit",
+    "perf": "tsx src/tools/perf-tests.ts",
+    "analyze": "npm run build && tsx src/tools/analyze-bundle.ts"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "jsdom": "^25.0.0",
+    "tsx": "^4.19.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.10"
+  }
+}
